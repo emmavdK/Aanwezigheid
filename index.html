@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Weekrooster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F4F0;
+    --panel:#FFFFFF;
+    --ink:#20281F;
+    --ink-soft:#5B6459;
+    --line:#DEDCD3;
+    --working:#3D7A5C;
+    --working-soft:#E4EFE7;
+    --off:#C7C4B8;
+    --lumc:#3452C4;
+    --lumc-soft:#E7EBFB;
+    --umcu:#D9762F;
+    --umcu-soft:#FBEBDD;
+    --thuis:#8A6FB8;
+    --thuis-soft:#EFE9F7;
+    --danger:#B8493D;
+    --today:#F1EEE3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:24px 20px 80px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:16px;
+    margin-bottom:22px;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:16px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:1.9rem;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    color:var(--ink-soft);
+    font-size:0.9rem;
+    margin-top:4px;
+  }
+  .legend{
+    display:flex;
+    gap:14px;
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    flex-wrap:wrap;
+  }
+  .legend span{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;}
+
+  /* ===== Wie ben jij ===== */
+  .identity{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px 20px;
+    margin-bottom:22px;
+  }
+  .identity-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+    margin-bottom:12px;
+  }
+  .identity-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .identity-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    padding:6px 8px 6px 6px;
+    border-radius:20px;
+    cursor:pointer;
+    font-size:0.85rem;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    transition:all .15s;
+  }
+  .identity-chip:hover{border-color:var(--ink-soft);}
+  .identity-chip .mini-avatar{
+    width:22px;height:22px;border-radius:50%;
+    background:var(--ink);color:var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-size:0.68rem;font-weight:600;
+    flex-shrink:0;
+  }
+  .identity-chip.selected{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:var(--paper);
+  }
+  .identity-chip.selected .mini-avatar{background:var(--paper);color:var(--ink);}
+  .identity-active{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .identity-active-text{font-size:0.92rem;}
+  .identity-active-text strong{font-weight:700;}
+  .switch-user-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    padding:5px 12px;
+    border-radius:20px;
+    font-size:0.78rem;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .switch-user-btn:hover{border-color:var(--ink-soft);color:var(--ink);}
+  .identity-empty{
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+
+  /* ===== Wie-is-waar overzicht ===== */
+  .overview{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 20px 20px;
+    margin-bottom:22px;
+  }
+  .overview-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+  }
+  .overview-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:10px;
+  }
+  .overview-day{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 10px 12px;
+    min-width:0;
+  }
+  .overview-day.is-today{
+    background:var(--today);
+    border-color:var(--ink);
+  }
+  .overview-day-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.68rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .today-dot{width:6px;height:6px;border-radius:50%;background:var(--ink);}
+  .overview-loc{margin-bottom:7px;}
+  .overview-loc:last-child{margin-bottom:0;}
+  .overview-loc-label{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:0.7rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:3px;
+  }
+  .overview-names{
+    display:flex;
+    flex-wrap:wrap;
+    gap:3px;
+  }
+  .name-chip{
+    font-size:0.7rem;
+    padding:2px 7px;
+    border-radius:20px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .name-chip.thuis{background:var(--thuis-soft);color:var(--thuis);}
+  .name-chip.lumc{background:var(--lumc-soft);color:var(--lumc);}
+  .name-chip.umcu{background:var(--umcu-soft);color:var(--umcu);}
+  .overview-empty{
+    font-size:0.72rem;
+    color:#B4B0A2;
+    font-style:italic;
+  }
+
+  /* ===== Rooster (bewerken) ===== */
+  .board-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+    margin:0 0 10px 2px;
+  }
+  .board{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 1px 2px rgba(32,40,31,0.04);
+  }
+  table{width:100%;border-collapse:collapse;}
+  thead th{
+    text-align:left;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    padding:14px 12px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  thead th.name-col{padding-left:20px;}
+  thead th.is-today{color:var(--ink);background:var(--today);}
+  tbody td{
+    padding:12px 10px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#FBFAF7;}
+
+  .name-cell{
+    padding-left:20px !important;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:150px;
+  }
+  .avatar{
+    width:30px;height:30px;border-radius:50%;
+    background:var(--ink);color:var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-size:0.85rem;font-weight:600;
+    flex-shrink:0;
+  }
+  .name-text{font-weight:600;font-size:0.93rem;}
+  .remove-btn{
+    margin-left:auto;
+    background:none;border:none;cursor:pointer;
+    color:var(--ink-soft);
+    font-size:1.1rem;line-height:1;
+    padding:4px 6px;border-radius:6px;
+    opacity:0;transition:opacity .15s, background .15s, color .15s;
+  }
+  tr:hover .remove-btn{opacity:1;}
+  .remove-btn:hover{background:#F3E4E1;color:var(--danger);}
+
+  .day-cell{min-width:112px;border-radius:8px;transition:background .15s;}
+  .day-cell.loc-thuis{background:var(--thuis-soft);}
+  .day-cell.loc-lumc{background:var(--lumc-soft);}
+  .day-cell.loc-umcu{background:var(--umcu-soft);}
+
+  tr.own-row{background:#FBFAF7;}
+  tr.own-row .name-cell{position:relative;}
+  .you-badge{
+    font-size:0.65rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--working);
+    background:var(--working-soft);
+    padding:2px 7px;
+    border-radius:20px;
+  }
+  .locked .switch, .locked .loc-picker{
+    opacity:0.45;
+    pointer-events:none;
+  }
+  .lock-hint{
+    font-size:0.66rem;
+    color:#B4B0A2;
+    margin-top:2px;
+  }
+
+  .toggle-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .switch{
+    position:relative;
+    width:38px;height:22px;
+    flex-shrink:0;
+  }
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{
+    position:absolute;inset:0;
+    background:var(--off);
+    border-radius:22px;
+    cursor:pointer;
+    transition:background .18s;
+  }
+  .slider::before{
+    content:"";
+    position:absolute;
+    height:16px;width:16px;
+    left:3px;top:3px;
+    background:white;
+    border-radius:50%;
+    transition:transform .18s;
+    box-shadow:0 1px 2px rgba(0,0,0,0.25);
+  }
+  .switch input:checked + .slider{background:var(--working);}
+  .switch input:checked + .slider::before{transform:translateX(16px);}
+  .status-label{
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  .loc-picker{
+    display:flex;
+    gap:4px;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+  .loc-btn{
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--ink-soft);
+    font-size:0.7rem;
+    font-weight:600;
+    padding:5px 9px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:all .15s;
+    font-family:'Inter',sans-serif;
+  }
+  .loc-btn.thuis.active{background:var(--thuis);border-color:var(--thuis);color:white;}
+  .loc-btn.lumc.active{background:var(--lumc);border-color:var(--lumc);color:white;}
+  .loc-btn.umcu.active{background:var(--umcu);border-color:var(--umcu);color:white;}
+  .loc-btn:not(.active):hover{border-color:var(--ink-soft);color:var(--ink);}
+
+  .add-row{
+    display:flex;
+    gap:10px;
+    padding:16px 20px;
+    background:#FBFAF7;
+    border-top:1px solid var(--line);
+  }
+  .add-row input{
+    flex:1;
+    max-width:280px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-family:'Inter',sans-serif;
+    font-size:0.9rem;
+    background:white;
+  }
+  .add-row input:focus{outline:2px solid var(--working);outline-offset:1px;}
+  .add-btn{
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    padding:9px 18px;
+    border-radius:8px;
+    font-weight:600;
+    font-size:0.88rem;
+    cursor:pointer;
+    transition:opacity .15s;
+  }
+  .add-btn:hover{opacity:0.85;}
+
+  .empty{
+    padding:40px 20px;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:0.92rem;
+  }
+
+  footer{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:0.76rem;
+    margin-top:24px;
+  }
+
+  /* ===================== MOBILE ===================== */
+  @media (max-width:760px){
+    body{padding:16px 12px 60px;}
+    header{flex-direction:column;align-items:flex-start;}
+    h1{font-size:1.5rem;}
+
+    .overview-grid{
+      grid-template-columns:none;
+      grid-auto-flow:column;
+      grid-auto-columns:78vw;
+      overflow-x:auto;
+      scroll-snap-type:x mandatory;
+      padding-bottom:4px;
+      margin:0 -4px;
+    }
+    .overview-day{scroll-snap-align:start;margin:0 4px;}
+
+    .board table, .board thead, .board tbody, .board tr, .board td, .board th{
+      display:block;
+      width:100%;
+    }
+    .board thead{display:none;}
+    .board tbody tr{
+      border-bottom:8px solid var(--paper);
+      padding:14px 0 10px;
+    }
+    .board .name-cell{
+      padding:0 16px 12px !important;
+      border-bottom:1px solid var(--line);
+      margin-bottom:10px;
+    }
+    .board tbody td.day-cell{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      padding:9px 16px;
+      border-bottom:none;
+      margin:0 8px 2px;
+    }
+    .board tbody td.day-cell::before{
+      content:attr(data-day);
+      font-family:'IBM Plex Mono',monospace;
+      font-size:0.72rem;
+      font-weight:600;
+      color:var(--ink-soft);
+      padding-top:2px;
+      width:34px;
+      flex-shrink:0;
+    }
+    .board tbody td.day-cell.is-today::before{color:var(--ink);}
+    .day-cell > div{flex:1;display:flex;flex-direction:column;align-items:flex-end;}
+    .day-cell .toggle-row{width:100%;justify-content:space-between;flex-direction:row;}
+    .loc-picker{justify-content:flex-end;width:100%;}
+
+    .add-row{flex-direction:column;align-items:stretch;}
+    .add-row input{max-width:none;}
+  }
+
+  .setup-banner{
+    display:none;
+    background:#FBEBDD;
+    border:1px solid var(--umcu);
+    border-radius:12px;
+    padding:16px 18px;
+    margin-bottom:22px;
+    font-size:0.86rem;
+    line-height:1.55;
+  }
+  .setup-banner.show{display:block;}
+  .setup-banner strong{display:block;margin-bottom:6px;font-size:0.94rem;}
+  .setup-banner code{
+    background:rgba(0,0,0,0.06);
+    padding:1px 5px;
+    border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.8em;
+  }
+  .live-dot{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:0.72rem;
+    font-weight:600;
+    color:var(--working);
+  }
+  .live-dot::before{
+    content:"";
+    width:7px;height:7px;border-radius:50%;
+    background:var(--working);
+    box-shadow:0 0 0 0 rgba(61,122,92,0.5);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(61,122,92,0.45);}
+    70%{box-shadow:0 0 0 6px rgba(61,122,92,0);}
+    100%{box-shadow:0 0 0 0 rgba(61,122,92,0);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Weekrooster</h1>
+      <div class="subtitle">Wie werkt wanneer, en waar</div>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--thuis)"></span>Thuis</span>
+      <span><span class="dot" style="background:var(--lumc)"></span>LUMC</span>
+      <span><span class="dot" style="background:var(--umcu)"></span>UMCU</span>
+    </div>
+  </header>
+
+  <div class="setup-banner" id="setup-banner">
+    <strong>Nog niet live gekoppeld</strong>
+    Vul bovenin het bestand (<code>firebaseConfig</code>) je eigen Firebase-gegevens in om dit rooster live te delen met collega's.
+    Zolang dat leeg is, werkt de pagina prima met opslag in deze ene browser.
+  </div>
+
+  <div class="identity" id="identity-box"></div>
+
+  <div class="overview">
+    <div class="overview-title">Wie is waar — deze week <span class="live-dot" id="live-dot" style="display:none;">Live</span></div>
+    <div class="overview-grid" id="overview-grid"></div>
+  </div>
+
+  <div class="board-title">Rooster bewerken</div>
+  <div class="board">
+    <table>
+      <thead>
+        <tr id="table-head"></tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    <div class="add-row">
+      <input id="new-name" type="text" placeholder="Naam nieuwe medewerker..." maxlength="40">
+      <button class="add-btn" id="add-btn">Medewerker toevoegen</button>
+    </div>
+  </div>
+
+  <footer id="save-status">Bezig met laden...</footer>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* ============================================================
+   STAP 1: vul hieronder je eigen Firebase-gegevens in.
+   Zo krijg je ze (5 minuten):
+   1. Ga naar https://console.firebase.google.com en maak een
+      gratis project aan (geen creditcard nodig).
+   2. Klik links op "Build" -> "Realtime Database" -> "Create Database".
+      Kies een locatie, en start in "test mode".
+   3. Ga naar het tandwiel-icoon -> "Project settings" -> tab "General".
+      Scroll naar "Your apps", klik het "</>" (Web) icoon, geef de app
+      een naam en registreer. Je krijgt dan een blokje "firebaseConfig" —
+      kopieer die waarden hieronder in plaats van de voorbeeldtekst.
+   4. Ga in Realtime Database naar het tabblad "Rules" en zet:
+        { "rules": { ".read": true, ".write": true } }
+      (Dit maakt het rooster open voor iedereen met de link — prima
+      voor een intern teamrooster, maar zet er geen gevoelige data in.)
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDGLljPa0kjJBwBBbNTFxrFJYDAbRTtM-w",
+  authDomain: "weekplanner-f16ec.firebaseapp.com",
+  databaseURL: "https://weekplanner-f16ec-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "weekplanner-f16ec",
+  storageBucket: "weekplanner-f16ec.firebasestorage.app",
+  messagingSenderId: "962510721213",
+  appId: "1:962510721213:web:b4c9f41fd2dadfce7067d4"
+};
+
+const isConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('PLAK_HIER');
+
+let db = null;
+let employeesRef = null;
+if(isConfigured){
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  employeesRef = ref(db, 'weekrooster/medewerkers');
+}
+
+const DAYS = [
+  {key:'mon', label:'Ma', full:'Maandag'}, {key:'tue', label:'Di', full:'Dinsdag'}, {key:'wed', label:'Wo', full:'Woensdag'},
+  {key:'thu', label:'Do', full:'Donderdag'}, {key:'fri', label:'Vr', full:'Vrijdag'}, {key:'sat', label:'Za', full:'Zaterdag'}, {key:'sun', label:'Zo', full:'Zondag'}
+];
+const LOCATIONS = [
+  {key:'thuis', label:'Thuis'},
+  {key:'lumc', label:'LUMC'},
+  {key:'umcu', label:'UMCU'}
+];
+const STORAGE_KEY = 'weekrooster-medewerkers';
+const USER_KEY = 'weekrooster-huidige-gebruiker';
+
+let employees = [];
+let currentUserId = null;
+let saveTimeout = null;
+
+function todayKey(){
+  const jsDay = new Date().getDay();
+  const map = {1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat',0:'sun'};
+  return map[jsDay];
+}
+
+function emptySchedule(){
+  const s = {};
+  DAYS.forEach(d => s[d.key] = {working:false, location:null});
+  return s;
+}
+
+function initials(name){
+  return name.trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase();
+}
+
+function arrToObj(arr){
+  const obj = {};
+  arr.forEach(emp => obj[emp.id] = emp);
+  return obj;
+}
+function objToArr(obj){
+  return obj ? Object.values(obj) : [];
+}
+
+function loadCurrentUser(){
+  try{
+    const raw = localStorage.getItem(USER_KEY);
+    const savedId = raw ? JSON.parse(raw) : null;
+    if(savedId && employees.some(e => e.id === savedId)){
+      currentUserId = savedId;
+    } else if(savedId){
+      currentUserId = null;
+    }
+  }catch(e){}
+}
+
+function selectUser(id){
+  currentUserId = id;
+  render();
+  try{ localStorage.setItem(USER_KEY, JSON.stringify(id)); }catch(e){}
+}
+
+function switchUser(){
+  currentUserId = null;
+  render();
+  try{ localStorage.removeItem(USER_KEY); }catch(e){}
+}
+
+function persistEmployees(){
+  const statusEl = document.getElementById('save-status');
+  if(isConfigured){
+    statusEl.textContent = 'Opslaan...';
+    if(saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(()=>{
+      set(employeesRef, arrToObj(employees))
+        .then(()=>{ statusEl.textContent = 'Live gedeeld — iedereen met de link ziet dit rooster.'; })
+        .catch(()=>{ statusEl.textContent = 'Opslaan mislukt. Controleer je Firebase-instellingen.'; });
+    }, 350);
+  } else {
+    statusEl.textContent = 'Opslaan...';
+    if(saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(()=>{
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
+        statusEl.textContent = 'Dit rooster wordt lokaal in deze browser opgeslagen.';
+      }catch(e){
+        statusEl.textContent = 'Opslaan mislukt.';
+      }
+    }, 350);
+  }
+}
+
+function addEmployee(name){
+  name = name.trim();
+  if(!name) return;
+  employees.push({
+    id: 'emp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    name,
+    schedule: emptySchedule()
+  });
+  render();
+  persistEmployees();
+}
+
+function removeEmployee(id){
+  employees = employees.filter(e => e.id !== id);
+  if(currentUserId === id){
+    currentUserId = null;
+    try{ localStorage.removeItem(USER_KEY); }catch(e){}
+  }
+  render();
+  persistEmployees();
+}
+
+function toggleWorking(empId, dayKey){
+  if(empId !== currentUserId) return;
+  const emp = employees.find(e=>e.id===empId);
+  if(!emp) return;
+  const day = emp.schedule[dayKey];
+  day.working = !day.working;
+  if(!day.working){
+    day.location = null;
+  }
+  render();
+  persistEmployees();
+}
+
+function setLocation(empId, dayKey, loc){
+  if(empId !== currentUserId) return;
+  const emp = employees.find(e=>e.id===empId);
+  if(!emp) return;
+  emp.schedule[dayKey].location = loc;
+  render();
+  persistEmployees();
+}
+
+function renderIdentity(){
+  const box = document.getElementById('identity-box');
+  if(employees.length === 0){
+    box.innerHTML = `<div class="identity-title">Wie ben jij?</div>
+      <div class="identity-empty">Voeg eerst medewerkers toe, dan kun je hier je eigen naam kiezen.</div>`;
+    return;
+  }
+  if(currentUserId && employees.some(e=>e.id===currentUserId)){
+    const emp = employees.find(e=>e.id===currentUserId);
+    box.innerHTML = `<div class="identity-title">Ingelogd als</div>
+      <div class="identity-active">
+        <span class="identity-active-text"><strong>${escapeHtml(emp.name)}</strong> — je kunt nu je eigen rooster invullen</span>
+        <button class="switch-user-btn" onclick="switchUser()">Wissel van gebruiker</button>
+      </div>`;
+  } else {
+    box.innerHTML = `<div class="identity-title">Wie ben jij? Klik op je naam om je rooster in te vullen</div>
+      <div class="identity-chips">${employees.map(e => `
+        <button class="identity-chip" onclick="selectUser('${e.id}')">
+          <span class="mini-avatar">${initials(e.name)}</span>${escapeHtml(e.name)}
+        </button>`).join('')}</div>`;
+  }
+}
+
+function renderHead(){
+  const tr = document.getElementById('table-head');
+  const today = todayKey();
+  let html = '<th class="name-col">Medewerker</th>';
+  DAYS.forEach(d => html += `<th class="${d.key===today?'is-today':''}">${d.label}</th>`);
+  tr.innerHTML = html;
+}
+
+function renderBody(){
+  const tbody = document.getElementById('table-body');
+  const today = todayKey();
+  if(employees.length === 0){
+    tbody.innerHTML = `<tr><td colspan="${DAYS.length+1}"><div class="empty">Nog geen medewerkers. Voeg hieronder de eerste toe.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = employees.map(emp => {
+    const isOwn = emp.id === currentUserId;
+    const dayCells = DAYS.map(d => {
+      const day = emp.schedule[d.key];
+      const checked = day.working ? 'checked' : '';
+      const locClass = day.working && day.location ? `loc-${day.location}` : '';
+      const todayClass = d.key === today ? 'is-today' : '';
+      const lockedClass = isOwn ? '' : 'locked';
+      const disabledAttr = isOwn ? '' : 'disabled';
+      let locHtml = '';
+      if(day.working){
+        locHtml = `<div class="loc-picker">` + LOCATIONS.map(l =>
+          `<button class="loc-btn ${l.key} ${day.location===l.key?'active':''}" ${disabledAttr}
+             onclick="setLocation('${emp.id}','${d.key}','${l.key}')">${l.label}</button>`
+        ).join('') + `</div>`;
+      }
+      return `<td class="day-cell ${locClass} ${todayClass} ${lockedClass}" data-day="${d.label}">
+        <div>
+          <div class="toggle-row">
+            <label class="switch">
+              <input type="checkbox" ${checked} ${disabledAttr} onchange="toggleWorking('${emp.id}','${d.key}')">
+              <span class="slider"></span>
+            </label>
+            <span class="status-label">${day.working ? 'aan het werk' : 'vrij'}</span>
+          </div>
+          ${locHtml}
+        </div>
+      </td>`;
+    }).join('');
+
+    return `<tr class="${isOwn ? 'own-row' : ''}">
+      <td class="name-cell">
+        <div class="avatar">${initials(emp.name)}</div>
+        <span class="name-text">${escapeHtml(emp.name)}</span>
+        ${isOwn ? '<span class="you-badge">Jij</span>' : ''}
+        <button class="remove-btn" title="Medewerker verwijderen" onclick="removeEmployee('${emp.id}')">&times;</button>
+      </td>
+      ${dayCells}
+    </tr>`;
+  }).join('');
+}
+
+function renderOverview(){
+  const el = document.getElementById('overview-grid');
+  const today = todayKey();
+  el.innerHTML = DAYS.map(d => {
+    const byLoc = {thuis:[], lumc:[], umcu:[]};
+    employees.forEach(emp => {
+      const day = emp.schedule[d.key];
+      if(day.working && day.location && byLoc[day.location]){
+        byLoc[day.location].push(emp.name);
+      }
+    });
+    const anyone = byLoc.thuis.length || byLoc.lumc.length || byLoc.umcu.length;
+    const locBlocks = LOCATIONS.map(l => {
+      if(byLoc[l.key].length === 0) return '';
+      const chips = byLoc[l.key].map(n => `<span class="name-chip ${l.key}">${escapeHtml(n)}</span>`).join('');
+      return `<div class="overview-loc">
+        <div class="overview-loc-label"><span class="dot" style="background:var(--${l.key})"></span>${l.label}</div>
+        <div class="overview-names">${chips}</div>
+      </div>`;
+    }).join('');
+    return `<div class="overview-day ${d.key===today?'is-today':''}">
+      <div class="overview-day-label">${d.full}${d.key===today?'<span class="today-dot"></span>':''}</div>
+      ${anyone ? locBlocks : '<div class="overview-empty">Niemand ingepland</div>'}
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function render(){
+  renderIdentity();
+  renderHead();
+  renderBody();
+  renderOverview();
+}
+
+document.getElementById('add-btn').addEventListener('click', () => {
+  const input = document.getElementById('new-name');
+  addEmployee(input.value);
+  input.value = '';
+  input.focus();
+});
+document.getElementById('new-name').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){
+    addEmployee(e.target.value);
+    e.target.value = '';
+  }
+});
+
+// Expose functions used by inline onclick/onchange handlers (needed because this is a module script)
+window.toggleWorking = toggleWorking;
+window.setLocation = setLocation;
+window.removeEmployee = removeEmployee;
+window.selectUser = selectUser;
+window.switchUser = switchUser;
+
+if(isConfigured){
+  document.getElementById('setup-banner').classList.remove('show');
+  document.getElementById('live-dot').style.display = 'inline-flex';
+  onValue(employeesRef, (snapshot) => {
+    employees = objToArr(snapshot.val());
+    loadCurrentUser();
+    render();
+    document.getElementById('save-status').textContent = 'Live gedeeld — iedereen met de link ziet dit rooster.';
+  }, (err) => {
+    document.getElementById('save-status').textContent = 'Kon geen verbinding maken met Firebase. Controleer je instellingen en database-rules.';
+  });
+} else {
+  document.getElementById('setup-banner').classList.add('show');
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    employees = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    employees = [];
+  }
+  loadCurrentUser();
+  render();
+  document.getElementById('save-status').textContent = 'Dit rooster wordt lokaal in deze browser opgeslagen.';
+
+  window.addEventListener('storage', (e) => {
+    if(e.key === STORAGE_KEY){
+      try{
+        employees = e.newValue ? JSON.parse(e.newValue) : [];
+        if(currentUserId && !employees.some(emp=>emp.id===currentUserId)){
+          currentUserId = null;
+        }
+        render();
+      }catch(err){}
+    }
+  });
+}
+</script>
+</body>
+</html>
