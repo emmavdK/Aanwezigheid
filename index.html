@@ -147,6 +147,55 @@
     font-style:italic;
   }
 
+  .roster-row{
+    display:inline-flex;
+    align-items:center;
+    gap:2px;
+  }
+  .chip-remove{
+    background:none;
+    border:none;
+    color:var(--ink-soft);
+    cursor:pointer;
+    font-size:1rem;
+    line-height:1;
+    padding:4px 6px;
+    border-radius:6px;
+  }
+  .chip-remove:hover{background:#F3E4E1;color:var(--danger);}
+  .roster-add-row{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+  }
+  .roster-add-row input{
+    flex:1;
+    max-width:260px;
+    padding:8px 11px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-family:'Inter',sans-serif;
+    font-size:0.88rem;
+    background:var(--paper);
+  }
+  .roster-add-row input:focus{outline:2px solid var(--working);outline-offset:1px;}
+
+  .roster-manage{margin-top:12px;}
+  .roster-manage summary{
+    cursor:pointer;
+    font-size:0.8rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    list-style:none;
+  }
+  .roster-manage summary::-webkit-details-marker{display:none;}
+  .roster-manage summary::before{content:'⚙ ';}
+  .roster-manage-panel{
+    margin-top:10px;
+    padding-top:12px;
+    border-top:1px solid var(--line);
+  }
+
   /* ===== Wie-is-waar overzicht ===== */
   .overview{
     background:var(--panel);
@@ -543,7 +592,7 @@
     <div class="overview-grid" id="overview-grid"></div>
   </div>
 
-  <div class="board-title">Rooster bewerken</div>
+  <div class="board-title">Jouw rooster</div>
   <div class="board">
     <table>
       <thead>
@@ -551,10 +600,6 @@
       </thead>
       <tbody id="table-body"></tbody>
     </table>
-    <div class="add-row">
-      <input id="new-name" type="text" placeholder="Naam nieuwe medewerker..." maxlength="40">
-      <button class="add-btn" id="add-btn">Medewerker toevoegen</button>
-    </div>
   </div>
 
   <footer id="save-status">Bezig met laden...</footer>
@@ -562,7 +607,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 /* ============================================================
    STAP 1: vul hieronder je eigen Firebase-gegevens in.
@@ -733,26 +778,48 @@ function setLocation(empId, dayKey, loc){
   persistEmployees();
 }
 
+function addEmployeeFromInput(){
+  const input = document.getElementById('new-name-field');
+  if(!input) return;
+  addEmployee(input.value);
+  input.value = '';
+  input.focus();
+}
+
+function rosterListHtml(){
+  const addForm = `<div class="roster-add-row">
+      <input id="new-name-field" type="text" placeholder="Naam nieuwe medewerker..." maxlength="40" onkeydown="if(event.key==='Enter'){addEmployeeFromInput();}">
+      <button class="add-btn" onclick="addEmployeeFromInput()">Toevoegen</button>
+    </div>`;
+  if(employees.length === 0){
+    return `<div class="identity-empty">Nog geen medewerkers.</div>${addForm}`;
+  }
+  const chips = employees.map(e => `
+    <div class="roster-row">
+      <button class="identity-chip" onclick="selectUser('${e.id}')">
+        <span class="mini-avatar">${initials(e.name)}</span>${escapeHtml(e.name)}
+      </button>
+      <button class="chip-remove" onclick="removeEmployee('${e.id}')" title="Medewerker verwijderen">&times;</button>
+    </div>`).join('');
+  return `<div class="identity-chips">${chips}</div>${addForm}`;
+}
+
 function renderIdentity(){
   const box = document.getElementById('identity-box');
-  if(employees.length === 0){
-    box.innerHTML = `<div class="identity-title">Wie ben jij?</div>
-      <div class="identity-empty">Voeg eerst medewerkers toe, dan kun je hier je eigen naam kiezen.</div>`;
-    return;
-  }
   if(currentUserId && employees.some(e=>e.id===currentUserId)){
     const emp = employees.find(e=>e.id===currentUserId);
     box.innerHTML = `<div class="identity-title">Ingelogd als</div>
       <div class="identity-active">
         <span class="identity-active-text"><strong>${escapeHtml(emp.name)}</strong> — je kunt nu je eigen rooster invullen</span>
         <button class="switch-user-btn" onclick="switchUser()">Wissel van gebruiker</button>
-      </div>`;
+      </div>
+      <details class="roster-manage">
+        <summary>Medewerkers beheren</summary>
+        <div class="roster-manage-panel">${rosterListHtml()}</div>
+      </details>`;
   } else {
     box.innerHTML = `<div class="identity-title">Wie ben jij? Klik op je naam om je rooster in te vullen</div>
-      <div class="identity-chips">${employees.map(e => `
-        <button class="identity-chip" onclick="selectUser('${e.id}')">
-          <span class="mini-avatar">${initials(e.name)}</span>${escapeHtml(e.name)}
-        </button>`).join('')}</div>`;
+      ${rosterListHtml()}`;
   }
 }
 
@@ -767,50 +834,50 @@ function renderHead(){
 function renderBody(){
   const tbody = document.getElementById('table-body');
   const today = todayKey();
-  if(employees.length === 0){
-    tbody.innerHTML = `<tr><td colspan="${DAYS.length+1}"><div class="empty">Nog geen medewerkers. Voeg hieronder de eerste toe.</div></td></tr>`;
+
+  if(!currentUserId || !employees.some(e=>e.id===currentUserId)){
+    const msg = employees.length === 0
+      ? 'Nog geen medewerkers. Voeg jezelf toe via "Wie ben jij?" hierboven.'
+      : 'Selecteer eerst je naam hierboven om je eigen rooster in te vullen.';
+    tbody.innerHTML = `<tr><td colspan="${DAYS.length+1}"><div class="empty">${msg}</div></td></tr>`;
     return;
   }
-  tbody.innerHTML = employees.map(emp => {
-    const isOwn = emp.id === currentUserId;
-    const dayCells = DAYS.map(d => {
-      const day = emp.schedule[d.key];
-      const checked = day.working ? 'checked' : '';
-      const locClass = day.working && day.location ? `loc-${day.location}` : '';
-      const todayClass = d.key === today ? 'is-today' : '';
-      const lockedClass = isOwn ? '' : 'locked';
-      const disabledAttr = isOwn ? '' : 'disabled';
-      let locHtml = '';
-      if(day.working){
-        locHtml = `<div class="loc-picker">` + LOCATIONS.map(l =>
-          `<button class="loc-btn ${l.key} ${day.location===l.key?'active':''}" ${disabledAttr}
-             onclick="setLocation('${emp.id}','${d.key}','${l.key}')">${l.label}</button>`
-        ).join('') + `</div>`;
-      }
-      return `<td class="day-cell ${locClass} ${todayClass} ${lockedClass}" data-day="${d.label}">
-        <div>
-          <div class="toggle-row">
-            <label class="switch">
-              <input type="checkbox" ${checked} ${disabledAttr} onchange="toggleWorking('${emp.id}','${d.key}')">
-              <span class="slider"></span>
-            </label>
-            <span class="status-label">${day.working ? 'aan het werk' : 'vrij'}</span>
-          </div>
-          ${locHtml}
-        </div>
-      </td>`;
-    }).join('');
 
-    return `<tr class="${isOwn ? 'own-row' : ''}">
-      <td class="name-cell">
-        <div class="avatar">${initials(emp.name)}</div>
-        <span class="name-text">${escapeHtml(emp.name)}</span>
-        ${isOwn ? '<span class="you-badge">Jij</span>' : ''}
-        <button class="remove-btn" title="Medewerker verwijderen" onclick="removeEmployee('${emp.id}')">&times;</button>
-      </td>
-      ${dayCells}
-    </tr>`;
+  const emp = employees.find(e=>e.id===currentUserId);
+  const dayCells = DAYS.map(d => {
+    const day = emp.schedule[d.key];
+    const checked = day.working ? 'checked' : '';
+    const locClass = day.working && day.location ? `loc-${day.location}` : '';
+    const todayClass = d.key === today ? 'is-today' : '';
+    let locHtml = '';
+    if(day.working){
+      locHtml = `<div class="loc-picker">` + LOCATIONS.map(l =>
+        `<button class="loc-btn ${l.key} ${day.location===l.key?'active':''}"
+           onclick="setLocation('${emp.id}','${d.key}','${l.key}')">${l.label}</button>`
+      ).join('') + `</div>`;
+    }
+    return `<td class="day-cell ${locClass} ${todayClass}" data-day="${d.label}">
+      <div>
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" ${checked} onchange="toggleWorking('${emp.id}','${d.key}')">
+            <span class="slider"></span>
+          </label>
+          <span class="status-label">${day.working ? 'aan het werk' : 'vrij'}</span>
+        </div>
+        ${locHtml}
+      </div>
+    </td>`;
   }).join('');
+
+  tbody.innerHTML = `<tr class="own-row">
+    <td class="name-cell">
+      <div class="avatar">${initials(emp.name)}</div>
+      <span class="name-text">${escapeHtml(emp.name)}</span>
+      <span class="you-badge">Jij</span>
+    </td>
+    ${dayCells}
+  </tr>`;
 }
 
 function renderOverview(){
@@ -853,25 +920,59 @@ function render(){
   renderOverview();
 }
 
-document.getElementById('add-btn').addEventListener('click', () => {
-  const input = document.getElementById('new-name');
-  addEmployee(input.value);
-  input.value = '';
-  input.focus();
-});
-document.getElementById('new-name').addEventListener('keydown', (e) => {
-  if(e.key === 'Enter'){
-    addEmployee(e.target.value);
-    e.target.value = '';
-  }
-});
-
 // Expose functions used by inline onclick/onchange handlers (needed because this is a module script)
 window.toggleWorking = toggleWorking;
 window.setLocation = setLocation;
 window.removeEmployee = removeEmployee;
 window.selectUser = selectUser;
 window.switchUser = switchUser;
+window.addEmployeeFromInput = addEmployeeFromInput;
+
+/* ============================================================
+   Wekelijkse reset: elke vrijdag om 15:00 gaan alle schuiven
+   van iedereen weer op "vrij", zodat iedereen zijn nieuwe
+   beschikbaarheid voor de volgende week kan opgeven.
+   ============================================================ */
+function mostRecentFridayAnchor(now){
+  const d = new Date(now);
+  const day = d.getDay(); // 0=zo..6=za, vrijdag=5
+  const daysSinceFriday = (day - 5 + 7) % 7;
+  const candidate = new Date(d);
+  candidate.setDate(d.getDate() - daysSinceFriday);
+  candidate.setHours(15,0,0,0);
+  if(candidate.getTime() > d.getTime()){
+    candidate.setDate(candidate.getDate() - 7);
+  }
+  return candidate.toISOString().slice(0,10); // bv "2026-07-17"
+}
+
+async function checkWeeklyReset(){
+  if(!isConfigured) return;
+  try{
+    const anchor = mostRecentFridayAnchor(new Date());
+    const metaRef = ref(db, 'weekrooster/laatsteReset');
+    const snap = await get(metaRef);
+    const stored = snap.exists() ? snap.val() : null;
+
+    if(stored === null){
+      await set(metaRef, anchor);
+      return;
+    }
+    if(stored !== anchor){
+      const empSnap = await get(employeesRef);
+      const empObj = empSnap.val() || {};
+      Object.keys(empObj).forEach(id => {
+        empObj[id].schedule = emptySchedule();
+      });
+      await update(ref(db), {
+        'weekrooster/medewerkers': empObj,
+        'weekrooster/laatsteReset': anchor
+      });
+    }
+  }catch(e){
+    console.error('Wekelijkse reset mislukt:', e);
+  }
+}
 
 if(isConfigured){
   document.getElementById('setup-banner').classList.remove('show');
@@ -884,6 +985,8 @@ if(isConfigured){
   }, (err) => {
     document.getElementById('save-status').textContent = 'Kon geen verbinding maken met Firebase. Controleer je instellingen en database-rules.';
   });
+  checkWeeklyReset();
+  setInterval(checkWeeklyReset, 5 * 60 * 1000);
 } else {
   document.getElementById('setup-banner').classList.add('show');
   try{
