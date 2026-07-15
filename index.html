@@ -743,6 +743,13 @@ function todayKey(){
   return map[jsDay];
 }
 
+function orderedDaysFromToday(){
+  const today = todayKey();
+  const idx = DAYS.findIndex(d => d.key === today);
+  if(idx === -1) return DAYS;
+  return [...DAYS.slice(idx), ...DAYS.slice(0, idx)];
+}
+
 function emptySchedule(){
   const s = {};
   DAYS.forEach(d => s[d.key] = {working:false, location:null});
@@ -959,7 +966,7 @@ function renderBody(){
 function renderOverview(){
   const el = document.getElementById('overview-grid');
   const today = todayKey();
-  el.innerHTML = DAYS.map(d => {
+  el.innerHTML = orderedDaysFromToday().map(d => {
     const byLoc = {thuis:[], lumc:[], umcu:[]};
     employees.forEach(emp => {
       const day = emp.schedule[d.key];
