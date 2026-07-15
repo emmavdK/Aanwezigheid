@@ -637,7 +637,7 @@
   <header>
     <div>
       <h1>Weekrooster</h1>
-      <div class="subtitle">Wie werkt wanneer, en waar</div>
+      <div class="subtitle">Wie werkt waar</div>
     </div>
     <div class="legend">
       <span><span class="dot" style="background:var(--thuis)"></span>Thuis</span>
@@ -800,7 +800,7 @@ function persistEmployees(){
     if(saveTimeout) clearTimeout(saveTimeout);
     saveTimeout = setTimeout(()=>{
       set(employeesRef, arrToObj(employees))
-        .then(()=>{ statusEl.textContent = 'Live gedeeld — iedereen met de link ziet dit rooster.'; })
+        .then(()=>{ statusEl.textContent = 'Live gedeeld — iedereen met de link ziet de aanwezigheid van het team.'; })
         .catch(()=>{ statusEl.textContent = 'Opslaan mislukt. Controleer je Firebase-instellingen.'; });
     }, 350);
   } else {
@@ -893,7 +893,7 @@ function renderIdentity(){
     const emp = employees.find(e=>e.id===currentUserId);
     box.innerHTML = `<div class="identity-title">Ingelogd als</div>
       <div class="identity-active">
-        <span class="identity-active-text"><strong>${escapeHtml(emp.name)}</strong> — je kunt nu je eigen rooster invullen</span>
+        <span class="identity-active-text"><strong>${escapeHtml(emp.name)}</strong> — je kunt nu je eigen aanwezigheid invullen</span>
         <button class="switch-user-btn" onclick="switchUser()">Wissel van gebruiker</button>
       </div>
       <details class="roster-manage">
@@ -901,7 +901,7 @@ function renderIdentity(){
         <div class="roster-manage-panel">${rosterListHtml()}</div>
       </details>`;
   } else {
-    box.innerHTML = `<div class="identity-title">Wie ben jij? Klik op je naam om je rooster in te vullen</div>
+    box.innerHTML = `<div class="identity-title">Wie ben jij? Klik op je naam om je aanwezigheid in te vullen</div>
       ${rosterListHtml()}`;
   }
 }
@@ -921,7 +921,7 @@ function renderBody(){
   if(!currentUserId || !employees.some(e=>e.id===currentUserId)){
     const msg = employees.length === 0
       ? 'Nog geen medewerkers. Voeg jezelf toe via "Wie ben jij?" hierboven.'
-      : 'Selecteer eerst je naam hierboven om je eigen rooster in te vullen.';
+      : 'Selecteer eerst je naam hierboven om je eigen aanwezigheid in te vullen.';
     tbody.innerHTML = `<tr><td colspan="${DAYS.length+1}"><div class="empty">${msg}</div></td></tr>`;
     return;
   }
@@ -1064,7 +1064,7 @@ function startFirebaseApp(){
     employees = objToArr(snapshot.val());
     loadCurrentUser();
     render();
-    document.getElementById('save-status').textContent = 'Live gedeeld — iedereen met de link ziet dit rooster.';
+    document.getElementById('save-status').textContent = 'Live gedeeld — iedereen met de link ziet de aanwezigheid van het team.';
   }, (err) => {
     document.getElementById('save-status').textContent = 'Kon geen verbinding maken met Firebase. Controleer je instellingen en database-rules.';
   });
