@@ -22,6 +22,8 @@
     --umcu-soft:#FBEBDD;
     --thuis:#8A6FB8;
     --thuis-soft:#EFE9F7;
+    --elders:#6B7280;
+    --elders-soft:#EAEBEC;
     --danger:#B8493D;
     --today:#F1EEE3;
   }
@@ -265,10 +267,19 @@
   .name-chip.thuis{background:var(--thuis-soft);color:var(--thuis);}
   .name-chip.lumc{background:var(--lumc-soft);color:var(--lumc);}
   .name-chip.umcu{background:var(--umcu-soft);color:var(--umcu);}
+  .name-chip.elders{background:var(--elders-soft);color:var(--elders);}
   .overview-empty{
     font-size:0.72rem;
     color:#B4B0A2;
     font-style:italic;
+  }
+  .overview-suboffice{margin:2px 0 6px 14px;}
+  .overview-suboffice:last-child{margin-bottom:0;}
+  .overview-suboffice-label{
+    font-size:0.62rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:2px;
   }
 
   /* ===== Rooster (bewerken) ===== */
@@ -339,6 +350,7 @@
   .day-cell.loc-thuis{background:var(--thuis-soft);}
   .day-cell.loc-lumc{background:var(--lumc-soft);}
   .day-cell.loc-umcu{background:var(--umcu-soft);}
+  .day-cell.loc-elders{background:var(--elders-soft);}
 
   tr.own-row{background:#FBFAF7;}
   tr.own-row .name-cell{position:relative;}
@@ -419,6 +431,7 @@
   .loc-btn.thuis.active{background:var(--thuis);border-color:var(--thuis);color:white;}
   .loc-btn.lumc.active{background:var(--lumc);border-color:var(--lumc);color:white;}
   .loc-btn.umcu.active{background:var(--umcu);border-color:var(--umcu);color:white;}
+  .loc-btn.elders.active{background:var(--elders);border-color:var(--elders);color:white;}
   .loc-btn:not(.active):hover{border-color:var(--ink-soft);color:var(--ink);}
 
   .office-picker{
@@ -666,6 +679,7 @@
       <span><span class="dot" style="background:var(--thuis)"></span>Thuis</span>
       <span><span class="dot" style="background:var(--lumc)"></span>LUMC</span>
       <span><span class="dot" style="background:var(--umcu)"></span>UMCU</span>
+      <span><span class="dot" style="background:var(--elders)"></span>Elders</span>
     </div>
   </header>
 
@@ -751,7 +765,8 @@ const DAYS = [
 const LOCATIONS = [
   {key:'thuis', label:'Thuis'},
   {key:'lumc', label:'LUMC'},
-  {key:'umcu', label:'UMCU'}
+  {key:'umcu', label:'UMCU'},
+  {key:'elders', label:'Elders'}
 ];
 const LUMC_OFFICES = [
   {key:'b4', label:'B4', max:6},
@@ -1044,20 +1059,41 @@ function renderOverview(){
   const el = document.getElementById('overview-grid');
   const today = todayKey();
   el.innerHTML = orderedDaysFromToday().map(d => {
-    const byLoc = {thuis:[], lumc:[], umcu:[]};
+    const byLoc = {thuis:[], lumc:[], umcu:[], elders:[]};
     employees.forEach(emp => {
       const day = emp.schedule[d.key];
       if(day.working && day.location && byLoc[day.location]){
         byLoc[day.location].push({name: emp.name, office: day.location === 'lumc' ? day.office : null});
       }
     });
-    const anyone = byLoc.thuis.length || byLoc.lumc.length || byLoc.umcu.length;
+    const anyone = byLoc.thuis.length || byLoc.lumc.length || byLoc.umcu.length || byLoc.elders.length;
     const locBlocks = LOCATIONS.map(l => {
       if(byLoc[l.key].length === 0) return '';
-      const chips = byLoc[l.key].map(item => {
-        const suffix = item.office ? ` · ${officeLabelFor(item.office)}` : '';
-        return `<span class="name-chip ${l.key}">${escapeHtml(item.name)}${escapeHtml(suffix)}</span>`;
-      }).join('');
+
+      if(l.key === 'lumc'){
+        const byOffice = {};
+        LUMC_OFFICES.forEach(o => byOffice[o.key] = []);
+        byOffice.none = [];
+        byLoc.lumc.forEach(item => {
+          const key = (item.office && byOffice[item.office]) ? item.office : 'none';
+          byOffice[key].push(item.name);
+        });
+        const officeOrder = [...LUMC_OFFICES.map(o=>({key:o.key, label:o.label})), {key:'none', label:'Geen kamer gekozen'}];
+        const subBlocks = officeOrder.map(o => {
+          if(byOffice[o.key].length === 0) return '';
+          const chips = byOffice[o.key].map(n => `<span class="name-chip lumc">${escapeHtml(n)}</span>`).join('');
+          return `<div class="overview-suboffice">
+            <div class="overview-suboffice-label">${o.label}</div>
+            <div class="overview-names">${chips}</div>
+          </div>`;
+        }).join('');
+        return `<div class="overview-loc">
+          <div class="overview-loc-label"><span class="dot" style="background:var(--lumc)"></span>${l.label}</div>
+          ${subBlocks}
+        </div>`;
+      }
+
+      const chips = byLoc[l.key].map(item => `<span class="name-chip ${l.key}">${escapeHtml(item.name)}</span>`).join('');
       return `<div class="overview-loc">
         <div class="overview-loc-label"><span class="dot" style="background:var(--${l.key})"></span>${l.label}</div>
         <div class="overview-names">${chips}</div>
