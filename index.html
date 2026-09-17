@@ -421,6 +421,28 @@
   .loc-btn.umcu.active{background:var(--umcu);border-color:var(--umcu);color:white;}
   .loc-btn:not(.active):hover{border-color:var(--ink-soft);color:var(--ink);}
 
+  .office-picker{
+    display:flex;
+    gap:4px;
+    margin-top:6px;
+    flex-wrap:wrap;
+  }
+  .office-btn{
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--ink-soft);
+    font-size:0.65rem;
+    font-weight:600;
+    padding:4px 8px;
+    border-radius:16px;
+    cursor:pointer;
+    transition:all .15s;
+    font-family:'Inter',sans-serif;
+  }
+  .office-btn.active{background:var(--lumc);border-color:var(--lumc);color:white;}
+  .office-btn.full{opacity:0.4;cursor:not-allowed;text-decoration:line-through;}
+  .office-btn:not(.active):not(.full):hover{border-color:var(--ink-soft);color:var(--ink);}
+
   .add-row{
     display:flex;
     gap:10px;
@@ -519,6 +541,7 @@
     .day-cell > div{flex:1;display:flex;flex-direction:column;align-items:flex-end;}
     .day-cell .toggle-row{width:100%;justify-content:space-between;flex-direction:row;}
     .loc-picker{justify-content:flex-end;width:100%;}
+    .office-picker{justify-content:flex-end;width:100%;}
 
     .add-row{flex-direction:column;align-items:stretch;}
     .add-row input{max-width:none;}
@@ -730,6 +753,11 @@ const LOCATIONS = [
   {key:'lumc', label:'LUMC'},
   {key:'umcu', label:'UMCU'}
 ];
+const LUMC_OFFICES = [
+  {key:'b4', label:'B4', max:6},
+  {key:'d1', label:'D1', max:2},
+  {key:'opr', label:'OPR', max:null}
+];
 const STORAGE_KEY = 'weekrooster-medewerkers';
 const USER_KEY = 'weekrooster-huidige-gebruiker';
 
@@ -752,12 +780,29 @@ function orderedDaysFromToday(){
 
 function emptySchedule(){
   const s = {};
-  DAYS.forEach(d => s[d.key] = {working:false, location:null});
+  DAYS.forEach(d => s[d.key] = {working:false, location:null, office:null});
   return s;
 }
 
 function initials(name){
   return name.trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase();
+}
+
+function officeLabelFor(key){
+  const o = LUMC_OFFICES.find(x => x.key === key);
+  return o ? o.label : '';
+}
+
+function countOfficeUsage(dayKey, officeKey, excludeEmpId){
+  let count = 0;
+  employees.forEach(emp => {
+    if(excludeEmpId && emp.id === excludeEmpId) return;
+    const day = emp.schedule[dayKey];
+    if(day && day.working && day.location === 'lumc' && day.office === officeKey){
+      count++;
+    }
+  });
+  return count;
 }
 
 function arrToObj(arr){
@@ -847,6 +892,7 @@ function toggleWorking(empId, dayKey){
   day.working = !day.working;
   if(!day.working){
     day.location = null;
+    day.office = null;
   }
   render();
   persistEmployees();
@@ -857,6 +903,25 @@ function setLocation(empId, dayKey, loc){
   const emp = employees.find(e=>e.id===empId);
   if(!emp) return;
   emp.schedule[dayKey].location = loc;
+  if(loc !== 'lumc'){
+    emp.schedule[dayKey].office = null;
+  }
+  render();
+  persistEmployees();
+}
+
+function setOffice(empId, dayKey, officeKey){
+  if(empId !== currentUserId) return;
+  const emp = employees.find(e=>e.id===empId);
+  if(!emp) return;
+  const day = emp.schedule[dayKey];
+  if(day.location !== 'lumc') return;
+  const officeInfo = LUMC_OFFICES.find(o=>o.key===officeKey);
+  if(officeInfo && officeInfo.max !== null && day.office !== officeKey){
+    const usage = countOfficeUsage(dayKey, officeKey, empId);
+    if(usage >= officeInfo.max) return; // vol, negeer klik (knop staat toch al uit)
+  }
+  day.office = (day.office === officeKey) ? null : officeKey;
   render();
   persistEmployees();
 }
@@ -938,6 +1003,18 @@ function renderBody(){
         `<button class="loc-btn ${l.key} ${day.location===l.key?'active':''}"
            onclick="setLocation('${emp.id}','${d.key}','${l.key}')">${l.label}</button>`
       ).join('') + `</div>`;
+
+      if(day.location === 'lumc'){
+        const officeButtons = LUMC_OFFICES.map(o => {
+          const usage = countOfficeUsage(d.key, o.key, emp.id);
+          const isFull = o.max !== null && usage >= o.max && day.office !== o.key;
+          const isActive = day.office === o.key;
+          const label = o.max !== null ? `${o.label} (${usage}/${o.max})` : o.label;
+          return `<button class="office-btn ${isActive?'active':''} ${isFull?'full':''}" ${isFull?'disabled':''}
+            onclick="setOffice('${emp.id}','${d.key}','${o.key}')">${label}</button>`;
+        }).join('');
+        locHtml += `<div class="office-picker">${officeButtons}</div>`;
+      }
     }
     return `<td class="day-cell ${locClass} ${todayClass}" data-day="${d.label}">
       <div>
@@ -971,13 +1048,16 @@ function renderOverview(){
     employees.forEach(emp => {
       const day = emp.schedule[d.key];
       if(day.working && day.location && byLoc[day.location]){
-        byLoc[day.location].push(emp.name);
+        byLoc[day.location].push({name: emp.name, office: day.location === 'lumc' ? day.office : null});
       }
     });
     const anyone = byLoc.thuis.length || byLoc.lumc.length || byLoc.umcu.length;
     const locBlocks = LOCATIONS.map(l => {
       if(byLoc[l.key].length === 0) return '';
-      const chips = byLoc[l.key].map(n => `<span class="name-chip ${l.key}">${escapeHtml(n)}</span>`).join('');
+      const chips = byLoc[l.key].map(item => {
+        const suffix = item.office ? ` · ${officeLabelFor(item.office)}` : '';
+        return `<span class="name-chip ${l.key}">${escapeHtml(item.name)}${escapeHtml(suffix)}</span>`;
+      }).join('');
       return `<div class="overview-loc">
         <div class="overview-loc-label"><span class="dot" style="background:var(--${l.key})"></span>${l.label}</div>
         <div class="overview-names">${chips}</div>
@@ -1006,6 +1086,7 @@ function render(){
 // Expose functions used by inline onclick/onchange handlers (needed because this is a module script)
 window.toggleWorking = toggleWorking;
 window.setLocation = setLocation;
+window.setOffice = setOffice;
 window.removeEmployee = removeEmployee;
 window.selectUser = selectUser;
 window.switchUser = switchUser;
